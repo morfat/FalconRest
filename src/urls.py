@@ -1,5 +1,5 @@
 
-from users.views import *
+from .users.views import *
 
 
 

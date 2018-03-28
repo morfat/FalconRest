@@ -4,7 +4,7 @@
 import falcon
 
 
-from urls import URLS as V1_URLS 
+from .urls import URLS as V1_URLS 
 
 def add_routes(app,*urls):
     for u in urls:
