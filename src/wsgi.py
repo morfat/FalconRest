@@ -18,7 +18,7 @@ def add_routes(app,*urls):
     
 def get_app():
 
-    app=falcon.API(media_type='application/json')
+    app=falcon.API()
  
     add_routes(app,('/v1',V1_URLS),) #list of routes per views 
 
