@@ -15,7 +15,7 @@ class UserListCreateView:
 
 
         #update
-        updated=db.table('users').update({"odds_status":0,"country_iso_code":"mo"},filter_data=[{"id":{"=":rowid}}])
+        updated=db.table('users').update({"odds_status":0,"country_iso_code":"mo"},filter_data_list=[{"id":{"=":rowid}}])
         db.commit()
 
 
@@ -28,6 +28,9 @@ class UserListCreateView:
 
         results=db.table('users').select_many("id,odds_status,phone,country_iso_code",filter_data_list=[{"id":{"<=":50}}])
 
+        deleted=db.table('users').delete([{"id":{"=":41}}])
+        
+        db.commit()
 
         resp.media=[r for r in results]
 

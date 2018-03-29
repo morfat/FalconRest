@@ -194,7 +194,7 @@ class DB:
         return None
 
     
-    def update(self,update_data,filter_data):
+    def update(self,update_data,filter_data_list):
        
         col_set=','.join([" {} = %s ".format(k) for k,v in  update_data.items()])
 
@@ -203,7 +203,7 @@ class DB:
         self.query="UPDATE {} SET {}  ".format(self._table_name,col_set)
 
         #append where clause to the query 
-        self.__where(filter_data)
+        self.__where(filter_data_list)
 
         #lets appedn filter values/params from update_data dict 
 
@@ -216,6 +216,18 @@ class DB:
         #run
         result=self.__execute(self.query,col_values)
        
+        return True
+
+
+    def delete(self,filter_data_list):
+        self.query="DELETE FROM {} ".format(self._table_name)
+        self.__where(filter_data_list)
+
+        print (self.query)
+        print(self.filter_values)
+    
+        self.__execute(self.query,self.filter_values)
+
         return True
 
 
