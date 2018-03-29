@@ -11,6 +11,7 @@ class MySQL:
 
       
     def execute(self,sql,params=None,many=None):
+        #self.cursor=self.connection.cursor()
         self.cursor=self.connection.cursor(MySQLdb.cursors.DictCursor)
         if many:
             self.cursor.executemany(sql,params)
@@ -129,6 +130,13 @@ class DB:
             "and":[{"id":{"eq":20}},{"odds_status":{"gt":0}}],
             "or":[]
               }
+            example2:
+
+        {
+            "and":[{"id":{"eq":20}},{"odds_status":{"gt":0}}],
+            "or":[{"id":{"lte":22}},{"country_iso_code":{"co":"k"}}]
+        }
+
         """
 
         if not filter_data:
