@@ -50,45 +50,132 @@ class DB:
         self._mysql=MySQL()
         self._table_name=None
         self.columns=None
-        self.filter_data=None
-        self.limit_rows=None
-        self.query=None
+      
         self.filter_values=None
-
-        
-
-
-
+        self.query=None
+       
+    
     def table(self,table_name):
         #should be called first before others 
         self._table_name=table_name
         #reset previous records
         self.columns=None
-        self.filter_data_list=None
-        self.limit_rows=None
+       
         self.filter_values=None
-        
 
-
+        self.query=None
         return self
 
     
-    def select(self,columns=None):
-
+    def __select(self,columns):
         """
         Accepts:
 
         columns      :=     string comma separete of colums to select
         
         """
-        self.columns='*' if not columns else columns
+        self.columns=columns
+
         #form colum hodlers
         #col_holders=','.join(['%s'] *len(self.columns))
         self.query="SELECT {} FROM {} ".format(self.columns,self._table_name)
+
         return self
 
-    def insert(self,data):
-        """ put records to db. """
+    def make_filter_values(self,filter_data_list):
+        """ makes filter values from query filter data list """
+        """ this are params """
+
+
+        filter_values=[]
+      
+        for d in filter_data_list:
+            for k,v in d.items():
+                for condition,value  in v.items():
+                    filter_values.append(value)
+
+        return filter_values
+
+
+    def set_filter_values(self,filter_values):
+        """ sets filter values directly """
+        self.filter_values=filter_values
+        return None
+
+
+        
+    def __where(self,filter_data_list):
+        
+        """ constructs the where clause of comparison 
+        filter_data_list         :=    List of Query filter params dictionary . e.g [{"id":{"<=":251}}]
+                            for where the list has more than one dict, they will be joined by a "OR" clause , but in dict data will be joined by "AND"
+                            Filter key words are as per mysql filter keywords.
+                            e.g < , > , >= ,<= , != , = , e.t.c
+        If none of the fields is provided, empty select will be run.
+        """
+        if not filter_data_list:
+            return self
+            
+        self.set_filter_values(self.make_filter_values(filter_data_list))
+
+        filter_cols=[]
+        for d in filter_data_list:
+            for k,v in d.items():
+                
+                for condition,value  in v.items():
+                    filter_cols.append("{} {} %s ".format(k,condition))
+                   
+
+        self.query= self.query +  " WHERE {} ".format(','.join(filter_cols))
+        return self
+
+    def __execute(self,query,values=None):
+        #runs query
+        return self._mysql.execute(sql=query,params=values)
+
+
+    def __limit(self,total_rows):
+        """ Sepecify rows to limit in the selection . """
+      
+        limit= " LIMIT {} ".format(total_rows)
+        self.query=self.query + limit
+        return self
+
+
+    def commit(self):
+        self._mysql.commit()
+    
+    def rollback(self):
+        self._mysql.rollback()
+
+    def close(self):
+        self._mysql.close()
+
+
+    def select_one(self,columns,filter_data_list=None):
+        self.__select(columns)
+        #if filter data append where clause
+        
+        self.__where(filter_data_list)
+        #run query
+        return self.__execute(self.query,self.filter_values).fetchone()
+
+    
+    def select_many(self,columns,filter_data_list=None,limit=None):
+        self.__select(columns)
+        self.__where(filter_data_list)
+
+        if limit:
+            self.__limit(limit)
+
+
+        #run query
+        return self.__execute(self.query,self.filter_values).fetchall()
+
+
+
+    def insert_one(self,data):
+        """ put record to db. """
 
         col_holders=','.join(['%s'] * len(data.items()))
         col_names=','.join([k for k,v in  data.items()])
@@ -101,58 +188,41 @@ class DB:
         print (col_values)
         print (self.query)
 
-
-        result=self._mysql.execute(self.query,col_values)
+        result=self.__execute(self.query,col_values)
         if self._mysql.cursor.rowcount > 0:
             return self._mysql.cursor.lastrowid
         return None
+
     
+    def update(self,update_data,filter_data):
+       
+        col_set=','.join([" {} = %s ".format(k) for k,v in  update_data.items()])
 
-    def where(self,filter_data_list):
-        
-        """ constructs the where clause of comparison 
-        filter_data_list         :=    List of Query filter params dictionary . e.g [{"id":{"<=":251}}]
-                            for where the list has more than one dict, they will be joined by a "OR" clause , but in dict data will be joined by "AND"
-                            Filter key words are as per mysql filter keywords.
-                            e.g < , > , >= ,<= , != , = , e.t.c
-        If none of the fields is provided, empty select will be run.
-        """
+        col_values=[v for k,v in  update_data.items()]
 
-        self.filter_values=[]
-        self.filter_data_list=filter_data_list
-        filter_cols=[]
+        self.query="UPDATE {} SET {}  ".format(self._table_name,col_set)
 
-        for d in filter_data_list:
-            for k,v in d.items():
-                
-                for condition,value  in v.items():
-                    filter_cols.append("{} {} %s ".format(k,condition))
-                    self.filter_values.append(value)
+        #append where clause to the query 
+        self.__where(filter_data)
 
-        self.query= self.query +  " WHERE {} ".format(','.join(filter_cols))
-        return self
+        #lets appedn filter values/params from update_data dict 
+
+        col_values.extend(self.filter_values)
 
 
+        print (self.query)
+        print (col_values)
 
-    def limit(self,total_rows):
-        """ Sepecify rows to limit in the selection . """
-        self.limit_rows=total_rows
-        limit= " LIMIT {} ".format(self.limit_rows)
-        self.query=self.query + limit
-        return self
+        #run
+        result=self.__execute(self.query,col_values)
+       
+        return True
+
+
     
-    @property
-    def result(self):
-        """ Call this if you need to select one result . Last Called """
-        return self._mysql.execute(self.query,(self.filter_values,)).fetchone()
-
-
-    @property
-    def results(self):
-        """ Query this if you expect to return more than one row. Last called. """
-        return self._mysql.execute(self.query,(self.filter_values,)).fetchall()
-
-
+    
+    
+    
     
     
     

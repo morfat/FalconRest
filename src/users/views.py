@@ -8,10 +8,15 @@ class UserListCreateView:
         req_data=req.media
 
         db=DB()
-        rowid=db.table('users').insert(req_data)
+        rowid=db.table('users').insert_one(req_data)
         print (rowid)
-        
 
+        #db.commit()
+
+
+        #update
+        updated=db.table('users').update({"odds_status":0,"country_iso_code":"mo"},filter_data=[{"id":{"=":rowid}}])
+        db.commit()
 
 
         resp.media={}
@@ -21,7 +26,8 @@ class UserListCreateView:
         #connect
         db=DB()
 
-        results=db.table('users').select("id,odds_status,phone,country_iso_code").where([{"id":{"<=":50}}]).limit(20).results
+        results=db.table('users').select_many("id,odds_status,phone,country_iso_code",filter_data_list=[{"id":{"<=":50}}])
+
 
         resp.media=[r for r in results]
 
