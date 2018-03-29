@@ -114,11 +114,11 @@ class DB:
     def __format_filter_val(self,filter_command,param):
         
         if filter_command in ['co','nco']:
-            return " {} ".format(("%" + param + "%"))
+            return "{}".format(("%" + param + "%"))
         elif filter_command == 'sw':
-            return " {} ".format(("%" + param))
+            return "{}".format(("%" + param))
         elif filter_command == 'ew':
-            return " {} ".format(( param + "%"))
+            return "{}".format(( param + "%"))
         else:
             return param
 
@@ -159,15 +159,18 @@ class DB:
         or_filters_sql=' OR '.join(v for v in or_filters[0])
         and_filters_sql=' AND '.join(v for v in and_filters[0])
 
-        filters_sql=and_filters_sql + ' OR ' + or_filters_sql
+        filters_sql=None
+
+        if len(or_filters_sql) > 0 and len(and_filters_sql) > 0:
+            filters_sql=and_filters_sql + ' OR ' + or_filters_sql
+        elif len(or_filters_sql) > 0:
+            filters_sql=or_filters_sql
+        else:
+            filters_sql=and_filters_sql 
 
         filter_vals=and_filters[1] + or_filters[1]
 
-        print (filters_sql,filter_vals)
-
-
-
-        
+    
 
         self.set_filter_values(filter_vals)
 

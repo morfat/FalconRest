@@ -32,8 +32,8 @@ class UserListCreateView:
 
         results=db.table('users').select_many("id,odds_status,phone,country_iso_code",
         filter_data= {
-            "and":[{"id":{"eq":20}},{"odds_status":{"gt":0}}],
-            "or":[{"id":{"lte":22}},{"name":{"co":"morfat"}}]
+            #"and":[{"id":{"eq":20}},{"odds_status":{"gt":0}}],
+            "or":[{"id":{"lte":22}},{"country_iso_code":{"co":"k"}}]
         })
 
         #deleted=db.table('users').delete([{"id":{"=":41}}])
