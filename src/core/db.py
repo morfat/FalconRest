@@ -230,6 +230,17 @@ class DB:
 
         return True
 
+    def raw(self,sql,params=None,many=False):
+        """ This is for executing raw query
+        
+        Returns mysl object directly. can cll commit,rollback,fetchone,fetchall methods directly
+        
+        """
+
+        return self._mysql.execute(sql,params,many)
+
+        
+
 
     
     
