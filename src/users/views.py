@@ -12,10 +12,14 @@ class UserListCreateView:
         print (rowid)
 
         #db.commit()
+       
 
 
         #update
-        updated=db.table('users').update({"odds_status":0,"country_iso_code":"mo"},filter_data_list=[{"id":{"=":rowid}}])
+        updated=db.table('users').update({"odds_status":0,"country_iso_code":"mo"},filter_data_list=[
+            {"id":{"=":rowid}}
+            
+            ])
         db.commit()
 
 
@@ -26,11 +30,15 @@ class UserListCreateView:
         #connect
         db=DB()
 
-        results=db.table('users').select_many("id,odds_status,phone,country_iso_code",filter_data_list=[{"id":{"<=":50}}])
+        results=db.table('users').select_many("id,odds_status,phone,country_iso_code",
+        filter_data= {
+            "and":[{"id":{"eq":20}},{"odds_status":{"gt":0}}],
+            "or":[{"id":{"lte":22}},{"name":{"co":"morfat"}}]
+        })
 
-        deleted=db.table('users').delete([{"id":{"=":41}}])
-        
-        db.commit()
+        #deleted=db.table('users').delete([{"id":{"=":41}}])
+
+        #db.commit()
 
         resp.media=[r for r in results]
 

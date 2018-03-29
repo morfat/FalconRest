@@ -45,6 +45,19 @@ class MySQL:
 class DB:
     """Main class accessed and used by models , e.t.c """
 
+    FILTER_COMMANDS={
+        "eq":"=",
+        "neq":"!=",
+        "lt":"<",
+        "lte":"<=",
+        "gt":">",
+        "gte":">=",
+        "co":"LIKE",#like %var%
+        "nco":"NOT LIKE",#
+        "sw":"LIKE",#starts with . like %var
+        "ew":"LIKE"# endswith like var%
+    }
+
     def __init__(self,):
         #create mysql object
         self._mysql=MySQL()
@@ -82,19 +95,6 @@ class DB:
 
         return self
 
-    def make_filter_values(self,filter_data_list):
-        """ makes filter values from query filter data list """
-        """ this are params """
-
-
-        filter_values=[]
-      
-        for d in filter_data_list:
-            for k,v in d.items():
-                for condition,value  in v.items():
-                    filter_values.append(value)
-
-        return filter_values
 
 
     def set_filter_values(self,filter_values):
@@ -102,31 +102,78 @@ class DB:
         self.filter_values=filter_values
         return None
 
+    def __get_query_condition(self,filter_command):
+        fc=self.FILTER_COMMANDS.get(filter_command)
 
         
-    def __where(self,filter_data_list):
+        return "{} %s ".format(fc)
         
-        """ constructs the where clause of comparison 
-        filter_data_list         :=    List of Query filter params dictionary . e.g [{"id":{"<=":251}}]
-                            for where the list has more than one dict, they will be joined by a "OR" clause , but in dict data will be joined by "AND"
-                            Filter key words are as per mysql filter keywords.
-                            e.g < , > , >= ,<= , != , = , e.t.c
-        If none of the fields is provided, empty select will be run.
+       
+        
+
+    def __format_filter_val(self,filter_command,param):
+        
+        if filter_command in ['co','nco']:
+            return " {} ".format(("%" + param + "%"))
+        elif filter_command == 'sw':
+            return " {} ".format(("%" + param))
+        elif filter_command == 'ew':
+            return " {} ".format(( param + "%"))
+        else:
+            return param
+
+
+    def __where(self,filter_data):
+        
+        """ e.g {
+            "and":[{"id":{"eq":20}},{"odds_status":{"gt":0}}],
+            "or":[]
+              }
         """
-        if not filter_data_list:
+
+        if not filter_data:
             return self
-            
-        self.set_filter_values(self.make_filter_values(filter_data_list))
 
-        filter_cols=[]
-        for d in filter_data_list:
-            for k,v in d.items():
-                
-                for condition,value  in v.items():
-                    filter_cols.append("{} {} %s ".format(k,condition))
-                   
+        and_params=filter_data.get("and",[])
+        or_params=filter_data.get("or",[])
 
-        self.query= self.query +  " WHERE {} ".format(','.join(filter_cols))
+        and_filters=[[],[]] #place holders and values
+        or_filters=[[],[]]
+
+
+        #process ands
+        for a in and_params:
+            for k,v in a.items():
+                for ck,cv in v.items():
+                    and_filters[0].append(" {} {} ".format(k,self.__get_query_condition(ck)))
+                    and_filters[1].append(self.__format_filter_val(ck,cv))
+        
+        #process ors
+        for o in or_params:
+            for k,v in o.items():
+                for ck,cv in v.items():
+                    or_filters[0].append(" {} {} ".format(k,self.__get_query_condition(ck)))
+                    or_filters[1].append(self.__format_filter_val(ck,cv))
+        
+
+        or_filters_sql=' OR '.join(v for v in or_filters[0])
+        and_filters_sql=' AND '.join(v for v in and_filters[0])
+
+        filters_sql=and_filters_sql + ' OR ' + or_filters_sql
+
+        filter_vals=and_filters[1] + or_filters[1]
+
+        print (filters_sql,filter_vals)
+
+
+
+        
+
+        self.set_filter_values(filter_vals)
+
+
+        self.query= self.query +  " WHERE {} ".format(filters_sql)
+
         return self
 
     def __execute(self,query,values=None):
@@ -152,22 +199,23 @@ class DB:
         self._mysql.close()
 
 
-    def select_one(self,columns,filter_data_list=None):
+    def select_one(self,columns,filter_data=None):
         self.__select(columns)
         #if filter data append where clause
         
-        self.__where(filter_data_list)
+        self.__where(filter_data)
         #run query
         return self.__execute(self.query,self.filter_values).fetchone()
 
     
-    def select_many(self,columns,filter_data_list=None,limit=None):
+    def select_many(self,columns,filter_data=None,limit=None):
         self.__select(columns)
-        self.__where(filter_data_list)
+        self.__where(filter_data)
 
         if limit:
             self.__limit(limit)
 
+        print (self.query,self.filter_values)
 
         #run query
         return self.__execute(self.query,self.filter_values).fetchall()
@@ -194,7 +242,7 @@ class DB:
         return None
 
     
-    def update(self,update_data,filter_data_list):
+    def update(self,update_data,filter_data):
        
         col_set=','.join([" {} = %s ".format(k) for k,v in  update_data.items()])
 
@@ -203,7 +251,7 @@ class DB:
         self.query="UPDATE {} SET {}  ".format(self._table_name,col_set)
 
         #append where clause to the query 
-        self.__where(filter_data_list)
+        self.__where(filter_data)
 
         #lets appedn filter values/params from update_data dict 
 
@@ -219,9 +267,9 @@ class DB:
         return True
 
 
-    def delete(self,filter_data_list):
+    def delete(self,filter_data):
         self.query="DELETE FROM {} ".format(self._table_name)
-        self.__where(filter_data_list)
+        self.__where(filter_data)
 
         print (self.query)
         print(self.filter_values)
@@ -234,7 +282,7 @@ class DB:
         """ This is for executing raw query
         
         Returns mysl object directly. can cll commit,rollback,fetchone,fetchall methods directly
-        
+
         """
 
         return self._mysql.execute(sql,params,many)
