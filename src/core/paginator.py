@@ -17,19 +17,14 @@ class Pagination:
 
        
     
-    def modify_order_by(self,order_by,key):
+    def modify_order_by(self,order_by,pagination_order_by):
+      
         #just update order by
         if order_by:
-            order_by_l=order_by.get(key)
-            if order_by_l:
-                order_by_l.append(self.last_seen_field_name)
-                order_by.update({key:order_by_l})
-            else:
-                order_by.update({key:[self.last_seen_field_name]})
-        else:
-            order_by={key:[self.last_seen_field_name]}
-        
-        return order_by
+            pagination_order_by.extend(order_by)
+
+        return pagination_order_by
+            
 
 
         
@@ -38,18 +33,20 @@ class Pagination:
         """  Returns a sql appended with a where clause for comparison i.e < or >  and updated order_by query data 
              Should be called immediatedly after calling where .
         """
+        
         where_clause=None
 
         if self.page_number == 1:
             #this is initial. access.
-            order_by=self.modify_order_by(order_by,'desc')
+            order_by=self.modify_order_by(order_by,["-{}".format(self.last_seen_field_name)]) #order descending
+
 
         elif self.direction == 'prev':
-            order_by=self.modify_order_by(order_by,'asc')  
+            order_by=self.modify_order_by(order_by,["{}".format(self.last_seen_field_name)])   #order ascending
             where_clause="{} > {} ".format(self.last_seen_field_name,self.last_seen)
 
         elif self.direction == 'next':
-            order_by=self.modify_order_by(order_by,'desc')
+            order_by=self.modify_order_by(order_by,["-{}".format(self.last_seen_field_name)])
             where_clause="{} < {} ".format(self.last_seen_field_name,self.last_seen)
 
         return (order_by,where_clause,)

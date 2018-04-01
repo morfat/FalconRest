@@ -205,27 +205,26 @@ class DB:
         #runs query
         return self._mysql.execute(sql=query,params=values)
 
+    def __get_order_by_text(self,val):
+        if val.startswith('-'):
+            return "{} DESC".format(val[1:])
+        else:
+            return "{} ASC".format(val)
+
+
     def __order_by(self,order_by):
+        
         """ 
         {"asc":[],"desc":[]}
         """
-    
-        asc_l=order_by.get('asc',[])
-        asc_q=','.join(["{} ASC ".format(v) for v in asc_l])
 
-        desc_l=order_by.get('desc',[])
-        desc_q=','.join(["{} DESC ".format(v) for v in desc_l])
+        order_by_sql=','.join([self.__get_order_by_text(v) for v in order_by])
 
-        print (asc_q,desc_q)
-
-        if asc_q and desc_q:
-            self.query = self.query + " ORDER BY " + asc_q + " , " + desc_q 
-
-        elif asc_q:
-            self.query = self.query + " ORDER BY " + asc_q
         
-        elif desc_q:
-            self.query = self.query + " ORDER BY " +  desc_q 
+        if order_by_sql:
+            self.query = self.query + " ORDER BY " + order_by_sql
+            
+
             
         return self
 
@@ -258,7 +257,9 @@ class DB:
     
     def select_many(self,columns,filter_data=None,group_by=None,order_by=None,limit=None):
         """ 
-        order_by format is {"asc":[],"desc":[]}
+        order_by format is a list of clumns to order with - meaning desc and without (-) meaning asc 
+        e.g ["-name","id"]
+
 
         group_by format is [] . a list of columns to group by
 
@@ -269,6 +270,8 @@ class DB:
         where_clause=''
         if self.paginator:
             order_by,where_clause=self.paginator.paginate(order_by)
+            print (order_by)
+
             limit=self.paginator.page_size
 
        

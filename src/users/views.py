@@ -45,7 +45,7 @@ class UserListCreateView:
         db=DB(paginator=paginator) #this enables pagination
 
         results,pagination=db.table('users').select_many("_id,phone_number,password,first_name,last_name",
-                                    order_by={"asc":["phone_number"]})
+                                    order_by=["-phone_number"])
 
         #results=db.table('users').select_many("id,odds_status,phone,country_iso_code",
         #filter_data= {
