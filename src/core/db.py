@@ -213,19 +213,23 @@ class DB:
 
 
     def __order_by(self,order_by):
-        
-        """ 
-        {"asc":[],"desc":[]}
-        """
+        order_by_sql=None
+        if order_by:
+            order_by_sql=','.join([self.__get_order_by_text(v) for v in order_by])
 
-        order_by_sql=','.join([self.__get_order_by_text(v) for v in order_by])
-
-        
         if order_by_sql:
             self.query = self.query + " ORDER BY " + order_by_sql
-            
 
-            
+        return self
+    
+    def __group_by(self,group_by):
+        group_by_sql=None
+        if group_by:
+            group_by_sql=','.join([v for v in group_by])
+
+        if group_by_sql:
+            self.query = self.query + " GROUP BY " + group_by_sql
+
         return self
 
     def __limit(self,total_rows):
@@ -270,13 +274,13 @@ class DB:
         where_clause=''
         if self.paginator:
             order_by,where_clause=self.paginator.paginate(order_by)
-            print (order_by)
-
+            
             limit=self.paginator.page_size
 
        
         self.__where(filter_data,extra_clause=where_clause)
 
+        self.__group_by(group_by)
         self.__order_by(order_by)
 
         if limit: 

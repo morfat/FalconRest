@@ -25,9 +25,6 @@ class Pagination:
 
         return pagination_order_by
             
-
-
-        
     def paginate(self,order_by):
         
         """  Returns a sql appended with a where clause for comparison i.e < or >  and updated order_by query data 
