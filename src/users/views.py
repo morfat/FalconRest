@@ -5,6 +5,9 @@ from src.core.db import DB
 from .serializers import UserListSerializer
 from .models import User
 
+
+from src.core.paginator import Pagination
+
 class UserListCreateView:
    
     def on_post(self,req,resp):
@@ -29,9 +32,20 @@ class UserListCreateView:
 
     
     def on_get(self,req,resp):
+        url_params=req.params
+
+        paginator=Pagination(url=req.uri,page_number=url_params.get('page'),page_size=url_params.get('page_size'),
+                            last_seen=url_params.get('last_seen'),direction=url_params.get('dir')
+                            )
+
+
+      
+        
         #connect
-        db=DB()
-        results=db.table('users').select_many("_id,phone_number,password,first_name,last_name")
+        db=DB(paginator=paginator) #this enables pagination
+
+        results,pagination=db.table('users').select_many("_id,phone_number,password,first_name,last_name",
+                                    order_by={"asc":["phone_number"]})
 
         #results=db.table('users').select_many("id,odds_status,phone,country_iso_code",
         #filter_data= {
@@ -43,7 +57,8 @@ class UserListCreateView:
 
         #db.commit()
 
-        resp.media=[UserListSerializer(User(**r)).data  for r in results]
+        resp.media={ "results":[UserListSerializer(User(**r)).data  for r in results], "pagination":pagination}
+
 
 
  

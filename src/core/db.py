@@ -2,6 +2,7 @@ import MySQLdb
 
 from src.settings import DATABASE
 
+
 class MySQL:
     def __init__(self,):
         self.connection=MySQLdb.connect(user=DATABASE.get('USER'),passwd=DATABASE.get('PASSWORD'),
@@ -59,7 +60,7 @@ class DB:
         "ew":"LIKE"# endswith like var%
     }
 
-    def __init__(self,):
+    def __init__(self,paginator=None):
         #create mysql object
         self._mysql=MySQL()
         self._table_name=None
@@ -67,6 +68,11 @@ class DB:
       
         self.filter_values=None
         self.query=None
+
+        self.paginator=paginator
+
+
+
        
     
     def table(self,table_name):
@@ -124,7 +130,7 @@ class DB:
             return param
 
 
-    def __where(self,filter_data):
+    def __where(self,filter_data,extra_clause=None):
         
         """ e.g {
             "and":[{"id":{"eq":20}},{"odds_status":{"gt":0}}],
@@ -140,6 +146,10 @@ class DB:
         """
 
         if not filter_data:
+            if extra_clause:
+                self.query= self.query +  " WHERE {} ".format( extra_clause)
+
+                
             return self
 
         and_params=filter_data.get("and",[])
@@ -182,8 +192,12 @@ class DB:
 
         self.set_filter_values(filter_vals)
 
-
-        self.query= self.query +  " WHERE {} ".format(filters_sql)
+        if extra_clause:
+            self.query= self.query +  " WHERE {}  AND {} ".format(filters_sql, extra_clause)
+        else:
+            self.query= self.query +  " WHERE {} ".format(filters_sql)
+            
+        
 
         return self
 
@@ -191,6 +205,29 @@ class DB:
         #runs query
         return self._mysql.execute(sql=query,params=values)
 
+    def __order_by(self,order_by):
+        """ 
+        {"asc":[],"desc":[]}
+        """
+    
+        asc_l=order_by.get('asc',[])
+        asc_q=','.join(["{} ASC ".format(v) for v in asc_l])
+
+        desc_l=order_by.get('desc',[])
+        desc_q=','.join(["{} DESC ".format(v) for v in desc_l])
+
+        print (asc_q,desc_q)
+
+        if asc_q and desc_q:
+            self.query = self.query + " ORDER BY " + asc_q + " , " + desc_q 
+
+        elif asc_q:
+            self.query = self.query + " ORDER BY " + asc_q
+        
+        elif desc_q:
+            self.query = self.query + " ORDER BY " +  desc_q 
+            
+        return self
 
     def __limit(self,total_rows):
         """ Sepecify rows to limit in the selection . """
@@ -219,17 +256,38 @@ class DB:
         return self.__execute(self.query,self.filter_values).fetchone()
 
     
-    def select_many(self,columns,filter_data=None,limit=None):
-        self.__select(columns)
-        self.__where(filter_data)
+    def select_many(self,columns,filter_data=None,group_by=None,order_by=None,limit=None):
+        """ 
+        order_by format is {"asc":[],"desc":[]}
 
-        if limit:
+        group_by format is [] . a list of columns to group by
+
+        """
+
+        self.__select(columns)
+
+        where_clause=''
+        if self.paginator:
+            order_by,where_clause=self.paginator.paginate(order_by)
+            limit=self.paginator.page_size
+
+       
+        self.__where(filter_data,extra_clause=where_clause)
+
+        self.__order_by(order_by)
+
+        if limit: 
             self.__limit(limit)
 
         print (self.query,self.filter_values)
 
-        #run query
-        return self.__execute(self.query,self.filter_values).fetchall()
+        results_list=[r for r in self.__execute(self.query,self.filter_values).fetchall() ]
+
+        if self.paginator:
+            return (results_list, self.paginator.get_pagination_data(results_list),)
+        
+        return results_list
+
 
 
 
@@ -297,6 +355,9 @@ class DB:
         """
 
         return self._mysql.execute(sql,params,many)
+
+
+
 
         
 
